@@ -37,9 +37,9 @@ public class TrafficViewModel extends AndroidViewModel {
     private String currentRoadQuery = "";
     private double maxDistanceMiles = -1.0;
 
-    // Default coordinates for Glasgow city centre if device location is unavailable
-    private double userLatitude = 55.8669;
-    private double userLongitude = -4.2504;
+    // Default coordinates for GCU if device location is unavailable
+    private double userLatitude = 55.8672;
+    private double userLongitude = -4.2502;
 
     public TrafficViewModel(@NonNull Application application) {
         super(application);

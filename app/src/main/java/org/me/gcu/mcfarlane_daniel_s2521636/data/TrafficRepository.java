@@ -10,7 +10,7 @@ package org.me.gcu.mcfarlane_daniel_s2521636.data;
 
 import android.content.Context;
 import android.util.Log;
-import org.me.gcu.mcfarlane_daniel_s2521636.R;
+import org.me.gcu.mcfarlane_daniel_s2521636.BuildConfig;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -49,8 +49,8 @@ public class TrafficRepository {
 
     public TrafficRepository(Context context) {
         this.appContext = context.getApplicationContext();
-        this.clientId = appContext.getString(R.string.traffic_client_id);
-        this.clientKey = appContext.getString(R.string.traffic_client_key);
+        this.clientId = BuildConfig.TRAFFIC_CLIENT_ID;
+        this.clientKey = BuildConfig.TRAFFIC_CLIENT_KEY;
     }
 
     public void startPeriodicUpdates(RepositoryCallback callback) {
@@ -68,8 +68,8 @@ public class TrafficRepository {
 
     private void fetchBothStreams(RepositoryCallback callback) {
         boolean isOfflineMode = false;
-
         String unplannedXmlContent = downloadXmlStream(UNPLANNED_EVENTS_URL);
+
         if (unplannedXmlContent != null && !unplannedXmlContent.isEmpty()) {
             saveToInternalCache(CACHE_UNPLANNED_FILE, unplannedXmlContent);
         } else {
@@ -78,6 +78,7 @@ public class TrafficRepository {
         }
 
         String roadworksXmlContent = downloadXmlStream(CURRENT_ROADWORKS_URL);
+
         if (roadworksXmlContent != null && !roadworksXmlContent.isEmpty()) {
             saveToInternalCache(CACHE_ROADWORKS_FILE, roadworksXmlContent);
         } else {
@@ -86,9 +87,11 @@ public class TrafficRepository {
         }
 
         List<Situation> combinedSituations = new ArrayList<>();
+
         if (unplannedXmlContent != null && !unplannedXmlContent.isEmpty()) {
             combinedSituations.addAll(parser.parseXmlString(unplannedXmlContent, Situation.StreamSource.UNPLANNED_INCIDENT));
         }
+
         if (roadworksXmlContent != null && !roadworksXmlContent.isEmpty()) {
             combinedSituations.addAll(parser.parseXmlString(roadworksXmlContent, Situation.StreamSource.CURRENT_ROADWORKS));
         }
@@ -125,6 +128,7 @@ public class TrafficRepository {
             }
 
             StringBuilder xmlContentBuilder = new StringBuilder();
+
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpConnection.getInputStream(), StandardCharsets.UTF_8))) {
                 String xmlLine;
                 while ((xmlLine = reader.readLine()) != null) {
@@ -132,7 +136,6 @@ public class TrafficRepository {
                 }
             }
             return xmlContentBuilder.toString();
-
         } catch (Exception networkException) {
             Log.e("TrafficRepository", "Network error downloading " + endpointUrl, networkException);
         } finally {
@@ -154,13 +157,12 @@ public class TrafficRepository {
     private String readFromInternalCache(String fileName, String defaultFallback) {
         try (FileInputStream inputStream = appContext.openFileInput(fileName);
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-
             StringBuilder cachedContentBuilder = new StringBuilder();
             String cachedLine;
+
             while ((cachedLine = reader.readLine()) != null) {
                 cachedContentBuilder.append(cachedLine);
             }
-
             if (cachedContentBuilder.length() > 0) {
                 return cachedContentBuilder.toString();
             }
