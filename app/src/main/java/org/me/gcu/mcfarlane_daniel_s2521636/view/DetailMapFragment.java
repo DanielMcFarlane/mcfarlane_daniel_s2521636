@@ -48,6 +48,7 @@ import java.util.Locale;
 public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
     private TrafficViewModel viewModel;
+
     private TextView detailTitle;
     private TextView detailComment;
     private TextView detailMetadata;
@@ -57,6 +58,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     private CardView textCard;
     private CardView mapCard;
     private View searchAndListContainer;
+
     private Polyline activeMarkerPolyline = null;
     private Marker activeMarker = null;
     private List<Situation> lastPlottedSituations = null;
@@ -73,6 +75,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
         textCard = view.findViewById(R.id.textCard);
         if (textCard == null) {
             // Bind Landscape layout instances from the Activity
@@ -92,6 +95,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
         mapCard = view.findViewById(R.id.mapCard);
         mapView = view.findViewById(R.id.mapView);
+
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
 
@@ -167,17 +171,14 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         detailComment.setText(situation.getGeneralPublicComment());
 
         StringBuilder metadataBuilder = new StringBuilder();
-
         if (!situation.getDelaysType().isEmpty()) {
             String formattedDelay = situation.getDelaysType().replaceAll("([a-z])([A-Z]+)", "$1 $2");
             formattedDelay = formattedDelay.substring(0, 1).toUpperCase() + formattedDelay.substring(1);
             metadataBuilder.append("<b>Traffic Impact:</b> ").append(formattedDelay).append("<br/>");
         }
-
         if (situation.getOperationalLanes() >= 0) {
             metadataBuilder.append("<b>Operational Lanes:</b> ").append(situation.getOperationalLanes()).append("<br/>");
         }
-
         if (situation.getRestrictedLanes() >= 0) {
             metadataBuilder.append("<b>Restricted Lanes:</b> ").append(situation.getRestrictedLanes()).append("<br/>");
         }
@@ -189,7 +190,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
         metadataBuilder.append("<b>Direction:</b> ").append(situation.getDirection().isEmpty() ? "Both / Unspecified" : situation.getDirection()).append("<br/><br/>");
         metadataBuilder.append("<b>Start Time:</b> ").append(formatFriendlyDate(situation.getOverallStartTime())).append("<br/>");
-
         if (!situation.getOverallEndTime().isEmpty()) {
             metadataBuilder.append("<b>End Time:</b> ").append(formatFriendlyDate(situation.getOverallEndTime())).append("<br/>");
         }
@@ -204,7 +204,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         // Sort locations alphabetically for to and from text
         List<LocationPoint> sortedLocations = new ArrayList<>(situation.getLocations());
         sortedLocations.sort((p1, p2) -> p1.getPointRole().compareToIgnoreCase(p2.getPointRole()));
-
         for (LocationPoint locationPoint : sortedLocations) {
             String junctionDescriptions = locationPoint.getJunctionDescriptions().isEmpty() ? "Segment" : String.join(" / ", locationPoint.getJunctionDescriptions());
             String rawRole = locationPoint.getPointRole();
@@ -230,7 +229,9 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     private void populateMultiSituationSummary(List<Situation> situationList) {
         closeDetailButton.setVisibility(View.GONE);
         detailMetadata.setVisibility(View.GONE);
+
         boolean isLandscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+
         if (isLandscape) {
             detailComment.setVisibility(View.GONE);
             if (textCard != null) textCard.setVisibility(View.GONE);
@@ -238,16 +239,18 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         } else {
             if (textCard != null) textCard.setVisibility(View.VISIBLE);
             detailComment.setVisibility(View.VISIBLE);
-            detailComment.setText("Tap a marker for details, or filter by road or distance above.");
+            detailComment.setText(getString(R.string.tap_marker_hint));
         }
+
         int listSize = situationList != null ? situationList.size() : 0;
-        detailTitle.setText(listSize + " matching results");
+        detailTitle.setText(getString(R.string.matching_results, listSize));
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap map) {
         this.googleMap = map;
         googleMap.getUiSettings().setZoomControlsEnabled(true);
+
         int paddingEdge = (int) (32 * getResources().getDisplayMetrics().density);
         int paddingTop = (int) (76 * getResources().getDisplayMetrics().density);
         googleMap.setPadding(paddingEdge, paddingTop, paddingEdge, paddingEdge);
@@ -258,9 +261,11 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
             public View getInfoWindow(@NonNull Marker marker) {
                 Situation situation = (Situation) marker.getTag();
                 if (situation == null) return null;
+
                 View view = getLayoutInflater().inflate(R.layout.item_situation, null);
                 boolean isLandscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
                 int infoWindowWidth;
+
                 if (isLandscape) {
                     infoWindowWidth = (int) (340 * getResources().getDisplayMetrics().density);
                 } else {
@@ -274,6 +279,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     card.setCardBackgroundColor(Color.WHITE);
                     card.setCardElevation(8f);
                     card.setUseCompatPadding(false);
+
                     View innerLayout = card.getChildAt(0);
                     if (innerLayout != null) {
                         innerLayout.setLayoutParams(new FrameLayout.LayoutParams(
@@ -289,21 +295,24 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
                 comment.setMaxLines(Integer.MAX_VALUE);
                 comment.setEllipsize(null);
+
                 roadAndType.setText(situation.getPrimaryRoadName() + "   " + situation.getDisplayTypeLabel());
+
                 String commentText = situation.getGeneralPublicComment();
                 if (commentText == null || commentText.trim().isEmpty()) {
-                    commentText = "No additional details provided.";
+                    commentText = getString(R.string.no_additional_details);
                 }
                 comment.setText(commentText);
 
                 String badgeContent = situation.getShortStatus();
                 double distanceMiles = situation.getMinimumDistanceMiles(viewModel.getUserLatitude(), viewModel.getUserLongitude());
                 if (distanceMiles < 10000) {
-                    badgeContent += String.format(Locale.UK, "   %.1f miles away", distanceMiles);
+                    badgeContent += "   " + getString(R.string.miles_away, distanceMiles);
                 }
                 delayBadge.setText(badgeContent);
                 delayBadge.getBackground().setTint(situation.getSeverityColour());
                 icon.setImageResource(situation.getIconResource());
+
                 return view;
             }
 
@@ -322,6 +331,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     activeMarkerPolyline = null;
                 }
                 activeMarker = marker;
+
                 if (Boolean.TRUE.equals(viewModel.getPlotAllFilteredOnMap().getValue())) {
                     List<LatLng> polylineCoordinates = new ArrayList<>();
                     for (LocationPoint locationPoint : situation.getLocations()) {
@@ -329,6 +339,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                             polylineCoordinates.add(new LatLng(locationPoint.getLatitude(), locationPoint.getLongitude()));
                         }
                     }
+
                     if (polylineCoordinates.size() >= 2) {
                         activeMarkerPolyline = googleMap.addPolyline(new PolylineOptions()
                                 .addAll(polylineCoordinates)
@@ -390,7 +401,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
         int plottedPointsCount = 0;
         boolean isSingleSituation = (situationsToPlot.size() == 1);
-
         Marker exactMarkerToOpen = null;
         Marker fallbackMarkerToOpen = null;
 
@@ -434,7 +444,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         }
 
         Marker markerToOpen = exactMarkerToOpen != null ? exactMarkerToOpen : fallbackMarkerToOpen;
-
         if (markerToOpen != null && Boolean.TRUE.equals(viewModel.getPlotAllFilteredOnMap().getValue())) {
             markerToOpen.showInfoWindow();
             activeMarker = markerToOpen;
@@ -454,6 +463,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                             .color(situationToReselect.getSeverityColour() != 0 ? situationToReselect.getSeverityColour() : Color.BLUE));
                 }
             }
+
             lastOpenedSituationId = null;
             lastOpenedMarkerPosition = null;
         }

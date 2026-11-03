@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">Traffic Scotland</string>
+    <string name="status_initialising">Initialising feed...</string>
+    <string name="status_refreshing">Refreshing Traffic Scotland feeds...</string>
+    <string name="status_offline">Offline Mode (Showing last cached data) | Checked at %1$s</string>
+    <string name="status_live">Live Feed Updated at %1$s (Auto-updates hourly)</string>
+    <string name="situations_match_search">%1$d situations match your search</string>
+    <string name="matching_results">%1$d matching results</string>
+    <string name="tap_marker_hint">Tap a marker for details, or filter by road or distance above.</string>
+    <string name="miles_away">%.1f miles away</string>
+    <string name="no_additional_details">No additional details provided.</string>
 </resources>

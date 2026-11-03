@@ -8,11 +8,11 @@
 
 package org.me.gcu.mcfarlane_daniel_s2521636.data;
 
-import android.content.Context;
 import android.util.Log;
 import org.me.gcu.mcfarlane_daniel_s2521636.BuildConfig;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
@@ -32,23 +32,24 @@ public class TrafficRepository {
 
     private final String clientId;
     private final String clientKey;
+    private final File cacheDirectory;
 
     private static final String UNPLANNED_EVENTS_URL = "https://datex2.trafficscotland.org/rest/2.3/publications/UnplannedEvents/Content.xml";
     private static final String CURRENT_ROADWORKS_URL = "https://datex2.trafficscotland.org/rest/2.3/publications/CurrentRoadworks/Content.xml";
     private static final String CACHE_UNPLANNED_FILE = "cached_unplanned.xml";
     private static final String CACHE_ROADWORKS_FILE = "cached_roadworks.xml";
+
     private static final long AUTO_UPDATE_INTERVAL_MINUTES = 60;
 
     public interface RepositoryCallback {
-        void onDataUpdated(List<Situation> situations, String statusMessage);
+        void onDataUpdated(List<Situation> situations, boolean isOfflineMode, String timestamp);
     }
 
-    private final Context appContext;
     private final TrafficParser parser = new TrafficParser();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    public TrafficRepository(Context context) {
-        this.appContext = context.getApplicationContext();
+    public TrafficRepository(File cacheDirectory) {
+        this.cacheDirectory = cacheDirectory;
         this.clientId = BuildConfig.TRAFFIC_CLIENT_ID;
         this.clientKey = BuildConfig.TRAFFIC_CLIENT_KEY;
     }
@@ -68,8 +69,8 @@ public class TrafficRepository {
 
     private void fetchBothStreams(RepositoryCallback callback) {
         boolean isOfflineMode = false;
-        String unplannedXmlContent = downloadXmlStream(UNPLANNED_EVENTS_URL);
 
+        String unplannedXmlContent = downloadXmlStream(UNPLANNED_EVENTS_URL);
         if (unplannedXmlContent != null && !unplannedXmlContent.isEmpty()) {
             saveToInternalCache(CACHE_UNPLANNED_FILE, unplannedXmlContent);
         } else {
@@ -78,7 +79,6 @@ public class TrafficRepository {
         }
 
         String roadworksXmlContent = downloadXmlStream(CURRENT_ROADWORKS_URL);
-
         if (roadworksXmlContent != null && !roadworksXmlContent.isEmpty()) {
             saveToInternalCache(CACHE_ROADWORKS_FILE, roadworksXmlContent);
         } else {
@@ -87,7 +87,6 @@ public class TrafficRepository {
         }
 
         List<Situation> combinedSituations = new ArrayList<>();
-
         if (unplannedXmlContent != null && !unplannedXmlContent.isEmpty()) {
             combinedSituations.addAll(parser.parseXmlString(unplannedXmlContent, Situation.StreamSource.UNPLANNED_INCIDENT));
         }
@@ -97,11 +96,7 @@ public class TrafficRepository {
         }
 
         String timestamp = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        String statusMessage = isOfflineMode
-                ? "Offline Mode (Showing last cached data) | Checked at " + timestamp
-                : "Live Feed Updated at " + timestamp + " (Auto-updates hourly)";
-
-        callback.onDataUpdated(combinedSituations, statusMessage);
+        callback.onDataUpdated(combinedSituations, isOfflineMode, timestamp);
     }
 
     private String downloadXmlStream(String endpointUrl) {
@@ -128,7 +123,6 @@ public class TrafficRepository {
             }
 
             StringBuilder xmlContentBuilder = new StringBuilder();
-
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpConnection.getInputStream(), StandardCharsets.UTF_8))) {
                 String xmlLine;
                 while ((xmlLine = reader.readLine()) != null) {
@@ -147,7 +141,8 @@ public class TrafficRepository {
     }
 
     private void saveToInternalCache(String fileName, String content) {
-        try (FileOutputStream outputStream = appContext.openFileOutput(fileName, Context.MODE_PRIVATE)) {
+        File file = new File(cacheDirectory, fileName);
+        try (FileOutputStream outputStream = new FileOutputStream(file)) {
             outputStream.write(content.getBytes(StandardCharsets.UTF_8));
         } catch (Exception cacheWriteException) {
             Log.e("TrafficRepository", "Failed to cache XML", cacheWriteException);
@@ -155,11 +150,16 @@ public class TrafficRepository {
     }
 
     private String readFromInternalCache(String fileName, String defaultFallback) {
-        try (FileInputStream inputStream = appContext.openFileInput(fileName);
+        File file = new File(cacheDirectory, fileName);
+        if (!file.exists()) {
+            return defaultFallback;
+        }
+
+        try (FileInputStream inputStream = new FileInputStream(file);
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+
             StringBuilder cachedContentBuilder = new StringBuilder();
             String cachedLine;
-
             while ((cachedLine = reader.readLine()) != null) {
                 cachedContentBuilder.append(cachedLine);
             }
@@ -167,7 +167,7 @@ public class TrafficRepository {
                 return cachedContentBuilder.toString();
             }
         } catch (Exception cacheReadException) {
-            // Intentionally swallowed, the file might not exist on first launch. Returning fallback is expected behavior
+            Log.d("TrafficRepository", "Cache file miss or format issue, normal for first launch.", cacheReadException);
         }
         return defaultFallback;
     }

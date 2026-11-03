@@ -67,12 +67,11 @@ public class SituationListFragment extends Fragment {
                 ((MainActivity) requireActivity()).showDetailsPaneIfNeeded();
             }
         });
-
         recyclerView.setAdapter(adapter);
 
         viewModel.getFilteredSituations().observe(getViewLifecycleOwner(), filteredSituations -> {
             int matchingCount = filteredSituations != null ? filteredSituations.size() : 0;
-            listCountHeader.setText(matchingCount + " situations match your search");
+            listCountHeader.setText(getString(R.string.situations_match_search, matchingCount));
             adapter.submitList(filteredSituations, viewModel.getUserLatitude(), viewModel.getUserLongitude());
         });
     }

@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -37,6 +38,7 @@ import org.me.gcu.mcfarlane_daniel_s2521636.R;
 import org.me.gcu.mcfarlane_daniel_s2521636.viewmodel.TrafficViewModel;
 
 public class MainActivity extends AppCompatActivity {
+
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 101;
     private static final String KEY_PORTRAIT_SHOWING_DETAILS = "portrait_showing_details";
 
@@ -70,10 +72,9 @@ public class MainActivity extends AppCompatActivity {
             View bottomNav = findViewById(R.id.bottomNav);
             View textCard = findViewById(R.id.textCard);
 
-            // Convert standard padding sizes into pixels for the display
-            int px16 = (int) (16 * getResources().getDisplayMetrics().density);
-            int px10 = (int) (10 * getResources().getDisplayMetrics().density);
-            int px4 = (int) (4 * getResources().getDisplayMetrics().density);
+            int px16 = getResources().getDimensionPixelSize(R.dimen.padding_large);
+            int px10 = getResources().getDimensionPixelSize(R.dimen.padding_medium);
+            int px4 = getResources().getDimensionPixelSize(R.dimen.padding_small);
 
             // Nudge the top header up slightly in portrait mode
             int topOffset = Math.max(0, safeInsets.top - px4);
@@ -113,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 // Portrait mode layout (pad the sides so everything lines up neatly)
                 view.setPadding(safeInsets.left, 0, safeInsets.right, 0);
+
                 if (topHeader != null) {
                     topHeader.setPadding(topHeader.getPaddingLeft(), topOffset, topHeader.getPaddingRight(), topHeader.getPaddingBottom());
                 }
@@ -267,7 +269,9 @@ public class MainActivity extends AppCompatActivity {
                     viewModel.updateUserLocation(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
                 }
             }
-        } catch (Exception locationAccessException) {}
+        } catch (SecurityException locationAccessException) {
+            Log.e("MainActivity", "Location permission revoked or unavailable", locationAccessException);
+        }
     }
 
     @Override

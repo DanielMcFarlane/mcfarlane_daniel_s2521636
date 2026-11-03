@@ -19,15 +19,16 @@ import org.me.gcu.mcfarlane_daniel_s2521636.R;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class SituationAdapter extends RecyclerView.Adapter<SituationAdapter.ViewHolder> {
+
     public interface OnSituationClickListener {
         void onSituationClicked(Situation situation);
     }
 
     private List<Situation> situationList = new ArrayList<>();
     private final OnSituationClickListener clickListener;
+
     private double referenceLatitude = 55.8669;
     private double referenceLongitude = -4.2504;
 
@@ -52,11 +53,12 @@ public class SituationAdapter extends RecyclerView.Adapter<SituationAdapter.View
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Situation currentSituation = situationList.get(position);
+
         holder.roadAndType.setText(currentSituation.getPrimaryRoadName() + "   " + currentSituation.getDisplayTypeLabel());
         holder.comment.setText(currentSituation.getGeneralPublicComment());
 
         double distanceMiles = currentSituation.getMinimumDistanceMiles(referenceLatitude, referenceLongitude);
-        String formattedDistance = distanceMiles < 10000 ? String.format(Locale.UK, "%.1f miles away", distanceMiles) : "";
+        String formattedDistance = distanceMiles < 10000 ? holder.itemView.getContext().getString(R.string.miles_away, distanceMiles) : "";
 
         String badgeContent = currentSituation.getShortStatus();
         if (!formattedDistance.isEmpty()) {

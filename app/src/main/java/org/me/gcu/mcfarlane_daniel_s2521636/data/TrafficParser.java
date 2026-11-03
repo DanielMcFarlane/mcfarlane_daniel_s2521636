@@ -12,7 +12,9 @@ import android.util.Log;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.LocationPoint;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +23,6 @@ public class TrafficParser {
 
     public List<Situation> parseXmlString(String xmlContent, Situation.StreamSource streamSource) {
         List<Situation> situations = new ArrayList<>();
-
         if (xmlContent == null || xmlContent.trim().isEmpty()) {
             return situations;
         }
@@ -41,15 +42,14 @@ public class TrafficParser {
             Situation currentSituation = null;
             LocationPoint currentLocationPoint = null;
             String currentText = "";
+
             boolean insideGeneralPublicComment = false;
             boolean insideToOrFrom = false;
             String lastDescriptorValue = "";
 
             int eventType = xmlParser.getEventType();
-
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 String tagName = xmlParser.getName();
-
                 switch (eventType) {
                     case XmlPullParser.START_TAG:
                         if ("situation".equalsIgnoreCase(tagName)) {
@@ -173,7 +173,7 @@ public class TrafficParser {
                 }
                 eventType = xmlParser.next();
             }
-        } catch (Exception parsingException) {
+        } catch (XmlPullParserException | IOException parsingException) {
             Log.e("TrafficParser", "Error parsing DATEX II XML", parsingException);
         }
 
@@ -194,7 +194,6 @@ public class TrafficParser {
         if (attributeCount > 0) {
             situation.setRecordXsiType(xmlParser.getAttributeValue(0));
         }
-
         for (int index = 0; index < attributeCount; index++) {
             String attributeName = xmlParser.getAttributeName(index);
             if ("id".equalsIgnoreCase(attributeName)) {

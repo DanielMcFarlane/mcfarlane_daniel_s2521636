@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import org.me.gcu.mcfarlane_daniel_s2521636.R;
 import org.me.gcu.mcfarlane_daniel_s2521636.data.TrafficRepository;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import java.util.ArrayList;
@@ -26,27 +27,38 @@ public class TrafficViewModel extends AndroidViewModel {
         ROADWORKS_ONLY
     }
 
+    // Default coordinates for GCU if device location is unavailable
+    private static final double DEFAULT_GCU_LATITUDE = 55.8672;
+    private static final double DEFAULT_GCU_LONGITUDE = -4.2502;
+
     private final TrafficRepository repository;
+
     private List<Situation> masterSituations = new ArrayList<>();
     private final MutableLiveData<List<Situation>> filteredSituations = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<Situation> selectedSituation = new MutableLiveData<>(null);
     private final MutableLiveData<Boolean> plotAllFilteredOnMap = new MutableLiveData<>(true);
-    private final MutableLiveData<String> statusMessage = new MutableLiveData<>("Initialising feed...");
+    private final MutableLiveData<String> statusMessage = new MutableLiveData<>();
 
     private StreamFilter currentStreamFilter = StreamFilter.ALL;
     private String currentRoadQuery = "";
     private double maxDistanceMiles = -1.0;
 
-    // Default coordinates for GCU if device location is unavailable
-    private double userLatitude = 55.8672;
-    private double userLongitude = -4.2502;
+    private double userLatitude = DEFAULT_GCU_LATITUDE;
+    private double userLongitude = DEFAULT_GCU_LONGITUDE;
 
     public TrafficViewModel(@NonNull Application application) {
         super(application);
-        repository = new TrafficRepository(application);
-        repository.startPeriodicUpdates((situations, status) -> {
+        statusMessage.setValue(application.getString(R.string.status_initialising));
+
+        repository = new TrafficRepository(application.getFilesDir());
+        repository.startPeriodicUpdates((situations, isOffline, timestamp) -> {
             masterSituations = situations;
-            statusMessage.postValue(status);
+
+            String formattedStatus = isOffline
+                    ? application.getString(R.string.status_offline, timestamp)
+                    : application.getString(R.string.status_live, timestamp);
+
+            statusMessage.postValue(formattedStatus);
             applyFiltersInternal();
         });
     }
@@ -107,23 +119,29 @@ public class TrafficViewModel extends AndroidViewModel {
     }
 
     public void refreshDataNow() {
-        statusMessage.setValue("Refreshing Traffic Scotland feeds...");
-        repository.triggerManualRefresh((situations, status) -> {
+        statusMessage.setValue(getApplication().getString(R.string.status_refreshing));
+        repository.triggerManualRefresh((situations, isOffline, timestamp) -> {
             masterSituations = situations;
-            statusMessage.postValue(status);
+            String formattedStatus = isOffline
+                    ? getApplication().getString(R.string.status_offline, timestamp)
+                    : getApplication().getString(R.string.status_live, timestamp);
+            statusMessage.postValue(formattedStatus);
             applyFiltersInternal();
         });
     }
 
     private void applyFiltersInternal() {
         List<Situation> matchingSituations = new ArrayList<>();
+
         for (Situation situation : masterSituations) {
             if (!matchesStreamType(situation)) continue;
             if (!situation.matchesRoadQuery(currentRoadQuery)) continue;
+
             if (maxDistanceMiles > 0) {
                 double distanceToSituation = situation.getMinimumDistanceMiles(userLatitude, userLongitude);
                 if (distanceToSituation > maxDistanceMiles) continue;
             }
+
             matchingSituations.add(situation);
         }
 
