@@ -26,6 +26,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class TrafficRepository {
@@ -38,7 +39,6 @@ public class TrafficRepository {
     private static final String CURRENT_ROADWORKS_URL = "https://datex2.trafficscotland.org/rest/2.3/publications/CurrentRoadworks/Content.xml";
     private static final String CACHE_UNPLANNED_FILE = "cached_unplanned.xml";
     private static final String CACHE_ROADWORKS_FILE = "cached_roadworks.xml";
-
     private static final long AUTO_UPDATE_INTERVAL_MINUTES = 60;
 
     public interface RepositoryCallback {
@@ -47,6 +47,7 @@ public class TrafficRepository {
 
     private final TrafficParser parser = new TrafficParser();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> activeTask;
 
     public TrafficRepository(File cacheDirectory) {
         this.cacheDirectory = cacheDirectory;
@@ -55,22 +56,29 @@ public class TrafficRepository {
     }
 
     public void startPeriodicUpdates(RepositoryCallback callback) {
-        scheduler.scheduleAtFixedRate(
+        scheduleAutoUpdate(callback, 0);
+    }
+
+    public void triggerManualRefresh(RepositoryCallback callback) {
+        if (activeTask != null && !activeTask.isDone()) {
+            activeTask.cancel(true);
+        }
+        scheduleAutoUpdate(callback, 0);
+    }
+
+    private void scheduleAutoUpdate(RepositoryCallback callback, long initialDelay) {
+        activeTask = scheduler.scheduleAtFixedRate(
                 () -> fetchBothStreams(callback),
-                0,
+                initialDelay,
                 AUTO_UPDATE_INTERVAL_MINUTES,
                 TimeUnit.MINUTES
         );
     }
 
-    public void triggerManualRefresh(RepositoryCallback callback) {
-        scheduler.execute(() -> fetchBothStreams(callback));
-    }
-
     private void fetchBothStreams(RepositoryCallback callback) {
         boolean isOfflineMode = false;
-
         String unplannedXmlContent = downloadXmlStream(UNPLANNED_EVENTS_URL);
+
         if (unplannedXmlContent != null && !unplannedXmlContent.isEmpty()) {
             saveToInternalCache(CACHE_UNPLANNED_FILE, unplannedXmlContent);
         } else {
@@ -79,6 +87,7 @@ public class TrafficRepository {
         }
 
         String roadworksXmlContent = downloadXmlStream(CURRENT_ROADWORKS_URL);
+
         if (roadworksXmlContent != null && !roadworksXmlContent.isEmpty()) {
             saveToInternalCache(CACHE_ROADWORKS_FILE, roadworksXmlContent);
         } else {
@@ -87,10 +96,10 @@ public class TrafficRepository {
         }
 
         List<Situation> combinedSituations = new ArrayList<>();
+
         if (unplannedXmlContent != null && !unplannedXmlContent.isEmpty()) {
             combinedSituations.addAll(parser.parseXmlString(unplannedXmlContent, Situation.StreamSource.UNPLANNED_INCIDENT));
         }
-
         if (roadworksXmlContent != null && !roadworksXmlContent.isEmpty()) {
             combinedSituations.addAll(parser.parseXmlString(roadworksXmlContent, Situation.StreamSource.CURRENT_ROADWORKS));
         }
@@ -163,6 +172,7 @@ public class TrafficRepository {
             while ((cachedLine = reader.readLine()) != null) {
                 cachedContentBuilder.append(cachedLine);
             }
+
             if (cachedContentBuilder.length() > 0) {
                 return cachedContentBuilder.toString();
             }
