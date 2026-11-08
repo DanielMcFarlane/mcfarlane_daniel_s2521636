@@ -21,13 +21,37 @@ import java.util.List;
 
 public class TrafficParser {
 
+    private static final String TAG_SITUATION = "situation";
+    private static final String TAG_SITUATION_RECORD = "situationrecord";
+    private static final String TAG_GENERAL_COMMENT = "generalpubliccomment";
+    private static final String TAG_TO = "to";
+    private static final String TAG_FROM = "from";
+    private static final String TAG_GROUP_LOCATIONS = "groupoflocations";
+    private static final String TAG_CREATION_TIME = "situationrecordcreationtime";
+    private static final String TAG_START_TIME = "overallstarttime";
+    private static final String TAG_END_TIME = "overallendtime";
+    private static final String TAG_OPERATIONAL_LANES = "numberofoperationallanes";
+    private static final String TAG_RESTRICTED_LANES = "numberoflanesrestricted";
+    private static final String TAG_DELAYS_TYPE = "delaystype";
+    private static final String TAG_VALUE = "value";
+    private static final String TAG_DIRECTION = "tpegdirection";
+    private static final String TAG_LATITUDE = "latitude";
+    private static final String TAG_LONGITUDE = "longitude";
+    private static final String TAG_ILC_DESCRIPTOR = "tpegilcpointdescriptortype";
+    private static final String TAG_JUNCTION_DESCRIPTOR = "tpegjunctionpointdescriptortype";
+    private static final String TAG_OTHER_DESCRIPTOR = "tpegotherpointdescriptortype";
+    private static final String TAG_MANAGEMENT_TYPE = "roadorcarriagewayorlanemanagementtype";
+    private static final String TAG_ABNORMAL_TRAFFIC = "abnormaltraffictype";
+    private static final String TAG_ROAD_MAINTENANCE = "roadmaintenancetype";
+    private static final String TAG_URGENT_ROADWORKS = "urgentroadworks";
+
     public List<Situation> parseXmlString(String xmlContent, Situation.StreamSource streamSource) {
         List<Situation> situations = new ArrayList<>();
+
         if (xmlContent == null || xmlContent.trim().isEmpty()) {
             return situations;
         }
 
-        // Strip any invisible characters or BOM before the XML declaration to prevent parsing errors
         int declarationIndex = xmlContent.indexOf("<?");
         if (declarationIndex > 0) {
             xmlContent = xmlContent.substring(declarationIndex);
@@ -42,28 +66,29 @@ public class TrafficParser {
             Situation currentSituation = null;
             LocationPoint currentLocationPoint = null;
             String currentText = "";
-
             boolean insideGeneralPublicComment = false;
             boolean insideToOrFrom = false;
             String lastDescriptorValue = "";
 
             int eventType = xmlParser.getEventType();
+
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 String tagName = xmlParser.getName();
+
                 switch (eventType) {
                     case XmlPullParser.START_TAG:
-                        if ("situation".equalsIgnoreCase(tagName)) {
+                        if (TAG_SITUATION.equalsIgnoreCase(tagName)) {
                             currentSituation = new Situation();
                             currentSituation.setStreamSource(streamSource);
                             extractAttribute(xmlParser, "id", currentSituation);
-                        } else if ("situationRecord".equalsIgnoreCase(tagName) && currentSituation != null) {
+                        } else if (TAG_SITUATION_RECORD.equalsIgnoreCase(tagName) && currentSituation != null) {
                             extractSituationRecordAttributes(xmlParser, currentSituation);
-                        } else if ("generalPublicComment".equalsIgnoreCase(tagName)) {
+                        } else if (TAG_GENERAL_COMMENT.equalsIgnoreCase(tagName)) {
                             insideGeneralPublicComment = true;
-                        } else if (("to".equalsIgnoreCase(tagName) || "from".equalsIgnoreCase(tagName)) && currentSituation != null) {
+                        } else if ((TAG_TO.equalsIgnoreCase(tagName) || TAG_FROM.equalsIgnoreCase(tagName)) && currentSituation != null) {
                             currentLocationPoint = new LocationPoint(tagName.toLowerCase());
                             insideToOrFrom = true;
-                        } else if ("groupOfLocations".equalsIgnoreCase(tagName) && currentSituation != null) {
+                        } else if (TAG_GROUP_LOCATIONS.equalsIgnoreCase(tagName) && currentSituation != null) {
                             if (currentLocationPoint == null) {
                                 currentLocationPoint = new LocationPoint("Point");
                             }
@@ -80,61 +105,60 @@ public class TrafficParser {
                         }
 
                         switch (tagName.toLowerCase()) {
-                            case "situationrecordcreationtime":
+                            case TAG_CREATION_TIME:
                                 currentSituation.setCreationTime(currentText);
                                 break;
-                            case "overallstarttime":
+                            case TAG_START_TIME:
                                 currentSituation.setOverallStartTime(currentText);
                                 break;
-                            case "overallendtime":
+                            case TAG_END_TIME:
                                 currentSituation.setOverallEndTime(currentText);
                                 break;
-                            case "numberofoperationallanes":
+                            case TAG_OPERATIONAL_LANES:
                                 currentSituation.setOperationalLanes(parseSafeInt(currentText));
                                 break;
-                            case "numberoflanesrestricted":
+                            case TAG_RESTRICTED_LANES:
                                 currentSituation.setRestrictedLanes(parseSafeInt(currentText));
                                 break;
-                            case "delaystype":
+                            case TAG_DELAYS_TYPE:
                                 currentSituation.setDelaysType(currentText);
                                 break;
-                            case "value":
-                                // The <value> tag is used generically, context flags determine if it represents a comment or a location descriptor
+                            case TAG_VALUE:
                                 if (insideGeneralPublicComment) {
                                     currentSituation.setGeneralPublicComment(currentText);
                                 } else if (insideToOrFrom || currentLocationPoint != null) {
                                     lastDescriptorValue = currentText;
                                 }
                                 break;
-                            case "generalpubliccomment":
+                            case TAG_GENERAL_COMMENT:
                                 insideGeneralPublicComment = false;
                                 break;
-                            case "tpegdirection":
+                            case TAG_DIRECTION:
                                 currentSituation.setDirection(currentText);
                                 break;
-                            case "latitude":
+                            case TAG_LATITUDE:
                                 if (currentLocationPoint != null) {
                                     currentLocationPoint.setLatitude(parseSafeDouble(currentText));
                                 }
                                 break;
-                            case "longitude":
+                            case TAG_LONGITUDE:
                                 if (currentLocationPoint != null) {
                                     currentLocationPoint.setLongitude(parseSafeDouble(currentText));
                                 }
                                 break;
-                            case "tpegilcpointdescriptortype":
+                            case TAG_ILC_DESCRIPTOR:
                                 if (currentLocationPoint != null && !lastDescriptorValue.isEmpty()) {
                                     currentLocationPoint.addRoadName(lastDescriptorValue);
                                     lastDescriptorValue = "";
                                 }
                                 break;
-                            case "tpegjunctionpointdescriptortype":
+                            case TAG_JUNCTION_DESCRIPTOR:
                                 if (currentLocationPoint != null && !lastDescriptorValue.isEmpty()) {
                                     currentLocationPoint.addJunctionDescription(lastDescriptorValue);
                                     lastDescriptorValue = "";
                                 }
                                 break;
-                            case "tpegotherpointdescriptortype":
+                            case TAG_OTHER_DESCRIPTOR:
                                 if (currentLocationPoint != null && !lastDescriptorValue.isEmpty()) {
                                     if ("linkName".equalsIgnoreCase(currentText)) {
                                         currentLocationPoint.addRoadName(lastDescriptorValue);
@@ -144,11 +168,10 @@ public class TrafficParser {
                                     lastDescriptorValue = "";
                                 }
                                 break;
-                            case "to":
-                            case "from":
-                            case "groupoflocations":
+                            case TAG_TO:
+                            case TAG_FROM:
+                            case TAG_GROUP_LOCATIONS:
                                 if (currentLocationPoint != null) {
-                                    // Prevent saving empty coordinates if the location point was instantiated but not populated with valid lat/long
                                     if (currentLocationPoint.getLatitude() != 0.0 && currentLocationPoint.getLongitude() != 0.0) {
                                         currentSituation.addLocationPoint(currentLocationPoint);
                                     }
@@ -156,15 +179,15 @@ public class TrafficParser {
                                 }
                                 insideToOrFrom = false;
                                 break;
-                            case "roadorcarriagewayorlanemanagementtype":
-                            case "abnormaltraffictype":
-                            case "roadmaintenancetype":
+                            case TAG_MANAGEMENT_TYPE:
+                            case TAG_ABNORMAL_TRAFFIC:
+                            case TAG_ROAD_MAINTENANCE:
                                 currentSituation.setManagementOrTrafficType(currentText);
                                 break;
-                            case "urgentroadworks":
+                            case TAG_URGENT_ROADWORKS:
                                 currentSituation.setUrgentRoadworks(Boolean.parseBoolean(currentText));
                                 break;
-                            case "situation":
+                            case TAG_SITUATION:
                                 situations.add(currentSituation);
                                 currentSituation = null;
                                 break;
@@ -194,6 +217,7 @@ public class TrafficParser {
         if (attributeCount > 0) {
             situation.setRecordXsiType(xmlParser.getAttributeValue(0));
         }
+
         for (int index = 0; index < attributeCount; index++) {
             String attributeName = xmlParser.getAttributeName(index);
             if ("id".equalsIgnoreCase(attributeName)) {
