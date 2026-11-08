@@ -4,7 +4,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.LocationPoint;
 
-public class LocationPointUnitTest {
+public class LocationPointTest {
 
     @Test
     public void addRoadName_preventsDuplicates() {

@@ -6,7 +6,7 @@ import static org.junit.Assert.*;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.LocationPoint;
 
-public class SituationUnitTest {
+public class SituationTest {
 
     @Test
     public void durationCalculation_isCorrect() {
