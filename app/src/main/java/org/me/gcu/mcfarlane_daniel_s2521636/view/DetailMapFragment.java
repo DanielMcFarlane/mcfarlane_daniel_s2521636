@@ -48,16 +48,19 @@ import java.util.Locale;
 public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
     private TrafficViewModel viewModel;
-
     private TextView detailTitle;
     private TextView detailComment;
-    private TextView detailMetadata;
     private ImageView closeDetailButton;
     private MapView mapView;
     private GoogleMap googleMap;
     private CardView textCard;
     private CardView mapCard;
     private View searchAndListContainer;
+
+    // Metadata Container and Fields
+    private View metadataContainer;
+    private TextView detailImpact, detailOpLanes, detailRestLanes, detailDuration;
+    private TextView detailDirection, detailStartTime, detailEndTime, detailUrgent, detailLocations;
 
     private Polyline activeMarkerPolyline = null;
     private Marker activeMarker = null;
@@ -80,22 +83,27 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         if (textCard == null) {
             // Bind Landscape layout instances from the Activity
             textCard = requireActivity().findViewById(R.id.textCard);
-            detailTitle = requireActivity().findViewById(R.id.detailTitle);
-            detailComment = requireActivity().findViewById(R.id.detailComment);
-            detailMetadata = requireActivity().findViewById(R.id.detailMetadata);
-            closeDetailButton = requireActivity().findViewById(R.id.closeDetailButton);
             searchAndListContainer = requireActivity().findViewById(R.id.searchAndListContainer);
-        } else {
-            // Bind Portrait layout instances from the Fragment
-            detailTitle = view.findViewById(R.id.detailTitle);
-            detailComment = view.findViewById(R.id.detailComment);
-            detailMetadata = view.findViewById(R.id.detailMetadata);
-            closeDetailButton = view.findViewById(R.id.closeDetailButton);
         }
+
+        // Bind all text components relative to the textCard parent to ensure they map to the correct orientation layout
+        detailTitle = textCard.findViewById(R.id.detailTitle);
+        detailComment = textCard.findViewById(R.id.detailComment);
+        closeDetailButton = textCard.findViewById(R.id.closeDetailButton);
+
+        metadataContainer = textCard.findViewById(R.id.metadataContainer);
+        detailImpact = textCard.findViewById(R.id.detailImpact);
+        detailOpLanes = textCard.findViewById(R.id.detailOpLanes);
+        detailRestLanes = textCard.findViewById(R.id.detailRestLanes);
+        detailDuration = textCard.findViewById(R.id.detailDuration);
+        detailDirection = textCard.findViewById(R.id.detailDirection);
+        detailStartTime = textCard.findViewById(R.id.detailStartTime);
+        detailEndTime = textCard.findViewById(R.id.detailEndTime);
+        detailUrgent = textCard.findViewById(R.id.detailUrgent);
+        detailLocations = textCard.findViewById(R.id.detailLocations);
 
         mapCard = view.findViewById(R.id.mapCard);
         mapView = view.findViewById(R.id.mapView);
-
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
 
@@ -164,55 +172,73 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         if (searchAndListContainer != null) searchAndListContainer.setVisibility(View.GONE);
 
         closeDetailButton.setVisibility(View.VISIBLE);
-        detailMetadata.setVisibility(View.VISIBLE);
+        metadataContainer.setVisibility(View.VISIBLE);
         detailComment.setVisibility(View.VISIBLE);
 
         detailTitle.setText(situation.getPrimaryRoadName() + "   " + situation.getDisplayTypeLabel());
         detailComment.setText(situation.getGeneralPublicComment());
 
-        StringBuilder metadataBuilder = new StringBuilder();
         if (!situation.getDelaysType().isEmpty()) {
             String formattedDelay = situation.getDelaysType().replaceAll("([a-z])([A-Z]+)", "$1 $2");
             formattedDelay = formattedDelay.substring(0, 1).toUpperCase() + formattedDelay.substring(1);
-            metadataBuilder.append("<b>Traffic Impact:</b> ").append(formattedDelay).append("<br/>");
+            detailImpact.setText(Html.fromHtml("<b>Traffic Impact:</b> " + formattedDelay, Html.FROM_HTML_MODE_COMPACT));
+            detailImpact.setVisibility(View.VISIBLE);
+        } else {
+            detailImpact.setVisibility(View.GONE);
         }
+
         if (situation.getOperationalLanes() >= 0) {
-            metadataBuilder.append("<b>Operational Lanes:</b> ").append(situation.getOperationalLanes()).append("<br/>");
+            detailOpLanes.setText(Html.fromHtml("<b>Operational Lanes:</b> " + situation.getOperationalLanes(), Html.FROM_HTML_MODE_COMPACT));
+            detailOpLanes.setVisibility(View.VISIBLE);
+        } else {
+            detailOpLanes.setVisibility(View.GONE);
         }
+
         if (situation.getRestrictedLanes() >= 0) {
-            metadataBuilder.append("<b>Restricted Lanes:</b> ").append(situation.getRestrictedLanes()).append("<br/>");
+            detailRestLanes.setText(Html.fromHtml("<b>Restricted Lanes:</b> " + situation.getRestrictedLanes(), Html.FROM_HTML_MODE_COMPACT));
+            detailRestLanes.setVisibility(View.VISIBLE);
+        } else {
+            detailRestLanes.setVisibility(View.GONE);
         }
 
         long durationDays = situation.getDurationInDays();
         if (durationDays > 0) {
-            metadataBuilder.append("<b>Planned Duration:</b> ").append(durationDays).append(" days<br/>");
+            detailDuration.setText(Html.fromHtml("<b>Planned Duration:</b> " + durationDays + " days", Html.FROM_HTML_MODE_COMPACT));
+            detailDuration.setVisibility(View.VISIBLE);
+        } else {
+            detailDuration.setVisibility(View.GONE);
         }
 
-        metadataBuilder.append("<b>Direction:</b> ").append(situation.getDirection().isEmpty() ? "Both / Unspecified" : situation.getDirection()).append("<br/><br/>");
-        metadataBuilder.append("<b>Start Time:</b> ").append(formatFriendlyDate(situation.getOverallStartTime())).append("<br/>");
+        String direction = situation.getDirection().isEmpty() ? "Both / Unspecified" : situation.getDirection();
+        detailDirection.setText(Html.fromHtml("<b>Direction:</b> " + direction, Html.FROM_HTML_MODE_COMPACT));
+
+        detailStartTime.setText(Html.fromHtml("<b>Start Time:</b> " + formatFriendlyDate(situation.getOverallStartTime()), Html.FROM_HTML_MODE_COMPACT));
+
         if (!situation.getOverallEndTime().isEmpty()) {
-            metadataBuilder.append("<b>End Time:</b> ").append(formatFriendlyDate(situation.getOverallEndTime())).append("<br/>");
+            detailEndTime.setText(Html.fromHtml("<b>End Time:</b> " + formatFriendlyDate(situation.getOverallEndTime()), Html.FROM_HTML_MODE_COMPACT));
+            detailEndTime.setVisibility(View.VISIBLE);
+        } else {
+            detailEndTime.setVisibility(View.GONE);
         }
 
         if (situation.isUrgentRoadworks()) {
-            metadataBuilder.append("<b><font color='#D32F2F'>Urgent Roadworks: Yes</font></b><br/>");
+            detailUrgent.setText("Urgent Roadworks: Yes");
+            detailUrgent.setVisibility(View.VISIBLE);
+        } else {
+            detailUrgent.setVisibility(View.GONE);
         }
 
-        metadataBuilder.append("<br/>");
-        metadataBuilder.append("<b>Locations:</b><br/>");
-
-        // Sort locations alphabetically for to and from text
+        StringBuilder locationsBuilder = new StringBuilder();
         List<LocationPoint> sortedLocations = new ArrayList<>(situation.getLocations());
         sortedLocations.sort((p1, p2) -> p1.getPointRole().compareToIgnoreCase(p2.getPointRole()));
+
         for (LocationPoint locationPoint : sortedLocations) {
             String junctionDescriptions = locationPoint.getJunctionDescriptions().isEmpty() ? "Segment" : String.join(" / ", locationPoint.getJunctionDescriptions());
             String rawRole = locationPoint.getPointRole();
             String formattedRole = rawRole.isEmpty() ? "Point" : rawRole.substring(0, 1).toUpperCase() + rawRole.substring(1).toLowerCase();
-            metadataBuilder.append("&#8226; <b>").append(formattedRole).append(":</b> ")
-                    .append(junctionDescriptions).append("<br/>");
+            locationsBuilder.append("&#8226; <b>").append(formattedRole).append(":</b> ").append(junctionDescriptions).append("<br/>");
         }
-
-        detailMetadata.setText(Html.fromHtml(metadataBuilder.toString(), Html.FROM_HTML_MODE_COMPACT));
+        detailLocations.setText(Html.fromHtml(locationsBuilder.toString(), Html.FROM_HTML_MODE_COMPACT));
     }
 
     private String formatFriendlyDate(String isoDateString) {
@@ -228,10 +254,9 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
     private void populateMultiSituationSummary(List<Situation> situationList) {
         closeDetailButton.setVisibility(View.GONE);
-        detailMetadata.setVisibility(View.GONE);
+        metadataContainer.setVisibility(View.GONE);
 
         boolean isLandscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-
         if (isLandscape) {
             detailComment.setVisibility(View.GONE);
             if (textCard != null) textCard.setVisibility(View.GONE);
@@ -250,7 +275,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     public void onMapReady(@NonNull GoogleMap map) {
         this.googleMap = map;
         googleMap.getUiSettings().setZoomControlsEnabled(true);
-
         int paddingEdge = (int) (32 * getResources().getDisplayMetrics().density);
         int paddingTop = (int) (76 * getResources().getDisplayMetrics().density);
         googleMap.setPadding(paddingEdge, paddingTop, paddingEdge, paddingEdge);
@@ -271,6 +295,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                 } else {
                     infoWindowWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85f);
                 }
+
                 view.setLayoutParams(new ViewGroup.LayoutParams(infoWindowWidth, ViewGroup.LayoutParams.WRAP_CONTENT));
                 view.setMinimumWidth(infoWindowWidth);
 
@@ -279,12 +304,9 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     card.setCardBackgroundColor(Color.WHITE);
                     card.setCardElevation(8f);
                     card.setUseCompatPadding(false);
-
                     View innerLayout = card.getChildAt(0);
                     if (innerLayout != null) {
-                        innerLayout.setLayoutParams(new FrameLayout.LayoutParams(
-                                infoWindowWidth,
-                                ViewGroup.LayoutParams.WRAP_CONTENT));
+                        innerLayout.setLayoutParams(new FrameLayout.LayoutParams(infoWindowWidth, ViewGroup.LayoutParams.WRAP_CONTENT));
                     }
                 }
 
@@ -295,7 +317,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
                 comment.setMaxLines(Integer.MAX_VALUE);
                 comment.setEllipsize(null);
-
                 roadAndType.setText(situation.getPrimaryRoadName() + "   " + situation.getDisplayTypeLabel());
 
                 String commentText = situation.getGeneralPublicComment();
@@ -309,6 +330,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                 if (distanceMiles < 10000) {
                     badgeContent += "   " + getString(R.string.miles_away, distanceMiles);
                 }
+
                 delayBadge.setText(badgeContent);
                 delayBadge.getBackground().setTint(situation.getSeverityColour());
                 icon.setImageResource(situation.getIconResource());
@@ -339,7 +361,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                             polylineCoordinates.add(new LatLng(locationPoint.getLatitude(), locationPoint.getLongitude()));
                         }
                     }
-
                     if (polylineCoordinates.size() >= 2) {
                         activeMarkerPolyline = googleMap.addPolyline(new PolylineOptions()
                                 .addAll(polylineCoordinates)
@@ -434,7 +455,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     }
                 }
             }
-
             if (isSingleSituation && segmentCoordinates.size() >= 2) {
                 googleMap.addPolyline(new PolylineOptions()
                         .addAll(segmentCoordinates)
@@ -447,8 +467,8 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         if (markerToOpen != null && Boolean.TRUE.equals(viewModel.getPlotAllFilteredOnMap().getValue())) {
             markerToOpen.showInfoWindow();
             activeMarker = markerToOpen;
-
             Situation situationToReselect = (Situation) markerToOpen.getTag();
+
             if (situationToReselect != null) {
                 List<LatLng> polylineCoordinates = new ArrayList<>();
                 for (LocationPoint locationPoint : situationToReselect.getLocations()) {
@@ -463,7 +483,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                             .color(situationToReselect.getSeverityColour() != 0 ? situationToReselect.getSeverityColour() : Color.BLUE));
                 }
             }
-
             lastOpenedSituationId = null;
             lastOpenedMarkerPosition = null;
         }
@@ -471,7 +490,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         if (plottedPointsCount > 0) {
             try {
                 if (isSingleSituation) {
-                    // Frame both points within bounds if there are multiple coordinates (e.g. From and To)
                     if (plottedPointsCount > 1) {
                         googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 120));
                     } else {

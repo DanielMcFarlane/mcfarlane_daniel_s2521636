@@ -70,14 +70,28 @@
                     android:textColor="#263238"
                     android:textSize="13sp" />
 
-                <TextView
-                    android:id="@+id/detailMetadata"
+                <!-- Discrete Metadata Fields -->
+                <LinearLayout
+                    android:id="@+id/metadataContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="vertical"
                     android:layout_marginTop="12dp"
-                    android:lineSpacingExtra="5dp"
-                    android:textColor="#455A64"
-                    android:textSize="13sp" />
+                    android:visibility="gone">
+
+                    <TextView android:id="@+id/detailImpact" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:textColor="#455A64" android:textSize="13sp" />
+                    <TextView android:id="@+id/detailOpLanes" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:textColor="#455A64" android:textSize="13sp" />
+                    <TextView android:id="@+id/detailRestLanes" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:textColor="#455A64" android:textSize="13sp" />
+                    <TextView android:id="@+id/detailDuration" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:textColor="#455A64" android:textSize="13sp" />
+                    <TextView android:id="@+id/detailDirection" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="8dp" android:textColor="#455A64" android:textSize="13sp" />
+
+                    <TextView android:id="@+id/detailStartTime" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:textColor="#455A64" android:textSize="13sp" />
+                    <TextView android:id="@+id/detailEndTime" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:textColor="#455A64" android:textSize="13sp" />
+                    <TextView android:id="@+id/detailUrgent" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="8dp" android:textColor="#D32F2F" android:textStyle="bold" android:textSize="13sp" />
+
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Locations:" android:textStyle="bold" android:textColor="#455A64" android:textSize="13sp" />
+                    <TextView android:id="@+id/detailLocations" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#455A64" android:textSize="13sp" />
+                </LinearLayout>
 
             </LinearLayout>
         </ScrollView>
