@@ -9,6 +9,7 @@
 package org.me.gcu.mcfarlane_daniel_s2521636.view;
 
 import android.graphics.Color;
+import android.location.Location;
 import android.os.Bundle;
 import android.text.Html;
 import android.view.LayoutInflater;
@@ -62,7 +63,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     private TextView detailImpact, detailOpLanes, detailRestLanes, detailDuration;
     private TextView detailDirection, detailStartTime, detailEndTime, detailUrgent, detailLocations;
 
-    private Polyline activeMarkerPolyline = null;
+    private final List<Polyline> activeMarkerPolylines = new ArrayList<>();
     private Marker activeMarker = null;
     private List<Situation> lastPlottedSituations = null;
     private boolean wasSingleSituation = false;
@@ -81,12 +82,10 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
         textCard = view.findViewById(R.id.textCard);
         if (textCard == null) {
-            // Bind Landscape layout instances from the Activity
             textCard = requireActivity().findViewById(R.id.textCard);
             searchAndListContainer = requireActivity().findViewById(R.id.searchAndListContainer);
         }
 
-        // Bind all text components relative to the textCard parent to ensure they map to the correct orientation layout
         detailTitle = textCard.findViewById(R.id.detailTitle);
         detailComment = textCard.findViewById(R.id.detailComment);
         closeDetailButton = textCard.findViewById(R.id.closeDetailButton);
@@ -143,6 +142,43 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                 renderMapMarkers();
             }
         });
+    }
+
+    private void clearActivePolylines() {
+        for (Polyline p : activeMarkerPolylines) {
+            p.remove();
+        }
+        activeMarkerPolylines.clear();
+    }
+
+    private void drawSafePolylines(List<LatLng> coordinates, int color, boolean isActiveMarker) {
+        if (coordinates == null || coordinates.size() < 2 || googleMap == null) return;
+
+        List<LatLng> currentSegment = new ArrayList<>();
+        currentSegment.add(coordinates.get(0));
+        float[] results = new float[1];
+
+        for (int i = 1; i < coordinates.size(); i++) {
+            LatLng prev = coordinates.get(i - 1);
+            LatLng curr = coordinates.get(i);
+
+            Location.distanceBetween(prev.latitude, prev.longitude, curr.latitude, curr.longitude, results);
+
+            // Break the polyline if the jump between points exceeds 15km
+            if (results[0] > 15000) {
+                if (currentSegment.size() >= 2) {
+                    Polyline p = googleMap.addPolyline(new PolylineOptions().addAll(currentSegment).width(8f).color(color));
+                    if (isActiveMarker) activeMarkerPolylines.add(p);
+                }
+                currentSegment.clear();
+            }
+            currentSegment.add(curr);
+        }
+
+        if (currentSegment.size() >= 2) {
+            Polyline p = googleMap.addPolyline(new PolylineOptions().addAll(currentSegment).width(8f).color(color));
+            if (isActiveMarker) activeMarkerPolylines.add(p);
+        }
     }
 
     private void applySingleDetailLayout() {
@@ -348,10 +384,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         googleMap.setOnMarkerClickListener(marker -> {
             Situation situation = (Situation) marker.getTag();
             if (situation != null) {
-                if (activeMarkerPolyline != null) {
-                    activeMarkerPolyline.remove();
-                    activeMarkerPolyline = null;
-                }
+                clearActivePolylines();
                 activeMarker = marker;
 
                 if (Boolean.TRUE.equals(viewModel.getPlotAllFilteredOnMap().getValue())) {
@@ -361,12 +394,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                             polylineCoordinates.add(new LatLng(locationPoint.getLatitude(), locationPoint.getLongitude()));
                         }
                     }
-                    if (polylineCoordinates.size() >= 2) {
-                        activeMarkerPolyline = googleMap.addPolyline(new PolylineOptions()
-                                .addAll(polylineCoordinates)
-                                .width(8f)
-                                .color(situation.getSeverityColour() != 0 ? situation.getSeverityColour() : Color.BLUE));
-                    }
+                    drawSafePolylines(polylineCoordinates, situation.getSeverityColour() != 0 ? situation.getSeverityColour() : Color.BLUE, true);
                 }
             }
             return false;
@@ -374,10 +402,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
         googleMap.setOnInfoWindowCloseListener(marker -> {
             if (marker.equals(activeMarker)) {
-                if (activeMarkerPolyline != null) {
-                    activeMarkerPolyline.remove();
-                    activeMarkerPolyline = null;
-                }
+                clearActivePolylines();
                 activeMarker = null;
             }
         });
@@ -402,10 +427,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     private void renderMapMarkers() {
         if (googleMap == null || viewModel == null) return;
         googleMap.clear();
-
-        if (activeMarkerPolyline != null) {
-            activeMarkerPolyline = null;
-        }
+        clearActivePolylines();
         activeMarker = null;
 
         Situation singleSituation = viewModel.getSelectedSituation().getValue();
@@ -455,11 +477,8 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     }
                 }
             }
-            if (isSingleSituation && segmentCoordinates.size() >= 2) {
-                googleMap.addPolyline(new PolylineOptions()
-                        .addAll(segmentCoordinates)
-                        .width(8f)
-                        .color(situation.getSeverityColour() != 0 ? situation.getSeverityColour() : Color.BLUE));
+            if (isSingleSituation) {
+                drawSafePolylines(segmentCoordinates, situation.getSeverityColour() != 0 ? situation.getSeverityColour() : Color.BLUE, false);
             }
         }
 
@@ -476,12 +495,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                         polylineCoordinates.add(new LatLng(locationPoint.getLatitude(), locationPoint.getLongitude()));
                     }
                 }
-                if (polylineCoordinates.size() >= 2) {
-                    activeMarkerPolyline = googleMap.addPolyline(new PolylineOptions()
-                            .addAll(polylineCoordinates)
-                            .width(8f)
-                            .color(situationToReselect.getSeverityColour() != 0 ? situationToReselect.getSeverityColour() : Color.BLUE));
-                }
+                drawSafePolylines(polylineCoordinates, situationToReselect.getSeverityColour() != 0 ? situationToReselect.getSeverityColour() : Color.BLUE, true);
             }
             lastOpenedSituationId = null;
             lastOpenedMarkerPosition = null;
