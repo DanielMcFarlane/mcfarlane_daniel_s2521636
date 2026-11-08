@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import org.me.gcu.mcfarlane_daniel_s2521636.R;
@@ -76,16 +77,11 @@ public class MainActivity extends AppCompatActivity {
             int px10 = getResources().getDimensionPixelSize(R.dimen.padding_medium);
             int px4 = getResources().getDimensionPixelSize(R.dimen.padding_small);
 
-            // Nudge the top header up slightly in portrait mode
             int topOffset = Math.max(0, safeInsets.top - px4);
 
             if (isLandscape) {
-                // Don't add padding to the main view in landscape so the background colour stretches perfectly to the edges.
                 view.setPadding(0, 0, 0, 0);
-
-                // Add padding to individual elements based on the screen's notch
                 if (topHeader != null) {
-                    // No need for right-side padding here, as the header sits on the left.
                     topHeader.setPadding(Math.max(safeInsets.left, px16), safeInsets.top, px16, px16);
                 }
                 if (filterSection != null) {
@@ -95,15 +91,12 @@ public class MainActivity extends AppCompatActivity {
                     listContainer.setPadding(Math.max(safeInsets.left, px16), 0, 0, 0);
                 }
                 if (detailContainer != null) {
-                    // Remove right padding so the map stretches seamlessly under the notch
                     detailContainer.setPadding(0, 0, 0, 0);
                 }
                 if (bottomNav != null) {
                     bottomNav.setPadding(safeInsets.left, bottomNav.getPaddingTop(), safeInsets.right, safeInsets.bottom);
                 }
                 if (textCard != null) {
-                    // Use a fixed bottom margin to avoid a large gap above the gesture bar,
-                    // and a slightly larger left margin to clear the physical screen corners.
                     ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) textCard.getLayoutParams();
                     params.leftMargin = safeInsets.left + px16;
                     params.bottomMargin = px16;
@@ -112,9 +105,7 @@ public class MainActivity extends AppCompatActivity {
                     textCard.setLayoutParams(params);
                 }
             } else {
-                // Portrait mode layout (pad the sides so everything lines up neatly)
                 view.setPadding(safeInsets.left, 0, safeInsets.right, 0);
-
                 if (topHeader != null) {
                     topHeader.setPadding(topHeader.getPaddingLeft(), topOffset, topHeader.getPaddingRight(), topHeader.getPaddingBottom());
                 }
@@ -129,12 +120,20 @@ public class MainActivity extends AppCompatActivity {
             isShowingDetailsInPortrait = savedInstanceState.getBoolean(KEY_PORTRAIT_SHOWING_DETAILS, false);
         }
 
-        viewModel = new ViewModelProvider(this).get(TrafficViewModel.class);
+        // Initialise ViewModel using a Factory to pass the cache directory instead of the Application context
+        viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+            @NonNull
+            @Override
+            @SuppressWarnings("unchecked")
+            public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+                return (T) new TrafficViewModel(getFilesDir());
+            }
+        }).get(TrafficViewModel.class);
+
         setupViews();
         updatePaneVisibility();
         requestCoarseLocationIfPermitted();
 
-        // Watch for layout changes between the live map and detail views to decide if the search bar should be shown
         viewModel.getPlotAllFilteredOnMap().observe(this, shouldPlotAll -> updatePaneVisibility());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -168,7 +167,23 @@ public class MainActivity extends AppCompatActivity {
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
 
         if (statusBanner != null) {
-            viewModel.getStatusMessage().observe(this, statusBanner::setText);
+            viewModel.getFeedStatus().observe(this, status -> {
+                if (status == null) return;
+                switch (status.state) {
+                    case INITIALISING:
+                        statusBanner.setText(getString(R.string.status_initialising));
+                        break;
+                    case REFRESHING:
+                        statusBanner.setText(getString(R.string.status_refreshing));
+                        break;
+                    case OFFLINE:
+                        statusBanner.setText(getString(R.string.status_offline, status.timestamp));
+                        break;
+                    case LIVE:
+                        statusBanner.setText(getString(R.string.status_live, status.timestamp));
+                        break;
+                }
+            });
         }
 
         if (roadSearchInput != null) {
@@ -224,7 +239,6 @@ public class MainActivity extends AppCompatActivity {
     private void updatePaneVisibility() {
         boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         View filterSection = findViewById(R.id.filterSection);
-
         Boolean isPlotAll = viewModel.getPlotAllFilteredOnMap().getValue();
         boolean showSearch = isPlotAll != null ? isPlotAll : true;
 

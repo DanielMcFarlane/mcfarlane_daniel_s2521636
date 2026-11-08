@@ -8,18 +8,16 @@
 
 package org.me.gcu.mcfarlane_daniel_s2521636.viewmodel;
 
-import android.app.Application;
-import androidx.annotation.NonNull;
-import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import org.me.gcu.mcfarlane_daniel_s2521636.R;
+import androidx.lifecycle.ViewModel;
 import org.me.gcu.mcfarlane_daniel_s2521636.data.TrafficRepository;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TrafficViewModel extends AndroidViewModel {
+public class TrafficViewModel extends ViewModel {
 
     public enum StreamFilter {
         ALL,
@@ -27,38 +25,43 @@ public class TrafficViewModel extends AndroidViewModel {
         ROADWORKS_ONLY
     }
 
+    public static class FeedStatus {
+        public enum State { INITIALISING, REFRESHING, LIVE, OFFLINE }
+        public final State state;
+        public final String timestamp;
+
+        public FeedStatus(State state, String timestamp) {
+            this.state = state;
+            this.timestamp = timestamp;
+        }
+    }
+
     // Default coordinates for GCU if device location is unavailable
     private static final double DEFAULT_GCU_LATITUDE = 55.8672;
     private static final double DEFAULT_GCU_LONGITUDE = -4.2502;
 
     private final TrafficRepository repository;
-
     private List<Situation> masterSituations = new ArrayList<>();
+
     private final MutableLiveData<List<Situation>> filteredSituations = new MutableLiveData<>(new ArrayList<>());
     private final MutableLiveData<Situation> selectedSituation = new MutableLiveData<>(null);
     private final MutableLiveData<Boolean> plotAllFilteredOnMap = new MutableLiveData<>(true);
-    private final MutableLiveData<String> statusMessage = new MutableLiveData<>();
+    private final MutableLiveData<FeedStatus> feedStatus = new MutableLiveData<>();
 
     private StreamFilter currentStreamFilter = StreamFilter.ALL;
     private String currentRoadQuery = "";
     private double maxDistanceMiles = -1.0;
-
     private double userLatitude = DEFAULT_GCU_LATITUDE;
     private double userLongitude = DEFAULT_GCU_LONGITUDE;
 
-    public TrafficViewModel(@NonNull Application application) {
-        super(application);
-        statusMessage.setValue(application.getString(R.string.status_initialising));
+    public TrafficViewModel(File cacheDirectory) {
+        feedStatus.setValue(new FeedStatus(FeedStatus.State.INITIALISING, null));
 
-        repository = new TrafficRepository(application.getFilesDir());
+        repository = new TrafficRepository(cacheDirectory);
         repository.startPeriodicUpdates((situations, isOffline, timestamp) -> {
             masterSituations = situations;
-
-            String formattedStatus = isOffline
-                    ? application.getString(R.string.status_offline, timestamp)
-                    : application.getString(R.string.status_live, timestamp);
-
-            statusMessage.postValue(formattedStatus);
+            FeedStatus.State state = isOffline ? FeedStatus.State.OFFLINE : FeedStatus.State.LIVE;
+            feedStatus.postValue(new FeedStatus(state, timestamp));
             applyFiltersInternal();
         });
     }
@@ -75,8 +78,8 @@ public class TrafficViewModel extends AndroidViewModel {
         return plotAllFilteredOnMap;
     }
 
-    public LiveData<String> getStatusMessage() {
-        return statusMessage;
+    public LiveData<FeedStatus> getFeedStatus() {
+        return feedStatus;
     }
 
     public void selectSituation(Situation situation) {
@@ -119,20 +122,17 @@ public class TrafficViewModel extends AndroidViewModel {
     }
 
     public void refreshDataNow() {
-        statusMessage.setValue(getApplication().getString(R.string.status_refreshing));
+        feedStatus.setValue(new FeedStatus(FeedStatus.State.REFRESHING, null));
         repository.triggerManualRefresh((situations, isOffline, timestamp) -> {
             masterSituations = situations;
-            String formattedStatus = isOffline
-                    ? getApplication().getString(R.string.status_offline, timestamp)
-                    : getApplication().getString(R.string.status_live, timestamp);
-            statusMessage.postValue(formattedStatus);
+            FeedStatus.State state = isOffline ? FeedStatus.State.OFFLINE : FeedStatus.State.LIVE;
+            feedStatus.postValue(new FeedStatus(state, timestamp));
             applyFiltersInternal();
         });
     }
 
     private void applyFiltersInternal() {
         List<Situation> matchingSituations = new ArrayList<>();
-
         for (Situation situation : masterSituations) {
             if (!matchesStreamType(situation)) continue;
             if (!situation.matchesRoadQuery(currentRoadQuery)) continue;
@@ -141,7 +141,6 @@ public class TrafficViewModel extends AndroidViewModel {
                 double distanceToSituation = situation.getMinimumDistanceMiles(userLatitude, userLongitude);
                 if (distanceToSituation > maxDistanceMiles) continue;
             }
-
             matchingSituations.add(situation);
         }
 
