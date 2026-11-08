@@ -9,6 +9,7 @@
 package org.me.gcu.mcfarlane_daniel_s2521636.model;
 
 import android.graphics.Color;
+import android.location.Location;
 import org.me.gcu.mcfarlane_daniel_s2521636.R;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -16,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Situation {
-
     public enum StreamSource {
         UNPLANNED_INCIDENT,
         CURRENT_ROADWORKS
@@ -26,7 +26,6 @@ public class Situation {
     private String recordId = "";
     private String recordXsiType = "";
     private StreamSource streamSource;
-
     private String creationTime = "";
     private String overallStartTime = "";
     private String overallEndTime = "";
@@ -37,7 +36,6 @@ public class Situation {
     private int operationalLanes = -1;
     private int restrictedLanes = -1;
     private boolean urgentRoadworks = false;
-
     private final List<LocationPoint> locations = new ArrayList<>();
 
     public String getSituationId() { return situationId; }
@@ -91,7 +89,6 @@ public class Situation {
                 return locationPoint.getRoadNames().get(0);
             }
         }
-
         // Fallback attempt to extract UK road numbers directly from the text description
         if (generalPublicComment != null && !generalPublicComment.isEmpty()) {
             String[] tokens = generalPublicComment.split("\\s+");
@@ -162,10 +159,8 @@ public class Situation {
         if (!delaysType.isEmpty()) summaryParts.add("Delays: " + formatCamelCase(delaysType));
         if (operationalLanes >= 0) summaryParts.add("Operational Lanes: " + operationalLanes);
         if (restrictedLanes >= 0) summaryParts.add("Restricted Lanes: " + restrictedLanes);
-
         long durationDays = getDurationInDays();
         if (durationDays > 0) summaryParts.add("Planned Duration: " + durationDays + " days");
-
         return summaryParts.isEmpty() ? "Standard monitoring active" : String.join(" | ", summaryParts);
     }
 
@@ -175,11 +170,9 @@ public class Situation {
             if (restrictedLanes > 0) return restrictedLanes + " Restricted Lanes";
             return "Incident";
         }
-
         if (!delaysType.isEmpty()) {
             return formatCamelCase(delaysType);
         }
-
         return "Roadworks";
     }
 
@@ -188,11 +181,9 @@ public class Situation {
             return true;
         }
         String lowerCaseQuery = query.trim().toLowerCase();
-
         if (generalPublicComment.toLowerCase().contains(lowerCaseQuery) || getPrimaryRoadName().toLowerCase().contains(lowerCaseQuery)) {
             return true;
         }
-
         for (LocationPoint locationPoint : locations) {
             for (String road : locationPoint.getRoadNames()) {
                 if (road.toLowerCase().contains(lowerCaseQuery)) return true;
@@ -208,31 +199,20 @@ public class Situation {
         if (locations.isEmpty()) {
             return Double.MAX_VALUE;
         }
+
         double minimumDistance = Double.MAX_VALUE;
+        float[] results = new float[1];
+
         for (LocationPoint locationPoint : locations) {
             if (locationPoint.getLatitude() != 0.0 || locationPoint.getLongitude() != 0.0) {
-                double distance = calculateHaversineMiles(userLatitude, userLongitude, locationPoint.getLatitude(), locationPoint.getLongitude());
-                if (distance < minimumDistance) {
-                    minimumDistance = distance;
+                Location.distanceBetween(userLatitude, userLongitude, locationPoint.getLatitude(), locationPoint.getLongitude(), results);
+                double distanceMiles = results[0] / 1609.34;
+                if (distanceMiles < minimumDistance) {
+                    minimumDistance = distanceMiles;
                 }
             }
         }
         return minimumDistance;
-    }
-
-    private double calculateHaversineMiles(double userLatitude, double userLongitude, double pointLatitude, double pointLongitude) {
-        final double earthRadiusMiles = 3958.8; // Mean Earth radius in miles
-
-        double deltaLatitude = Math.toRadians(pointLatitude - userLatitude);
-        double deltaLongitude = Math.toRadians(pointLongitude - userLongitude);
-
-        double halfChordLengthSquare = Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2)
-                + Math.cos(Math.toRadians(userLatitude)) * Math.cos(Math.toRadians(pointLatitude))
-                * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
-
-        double angularDistance = 2 * Math.atan2(Math.sqrt(halfChordLengthSquare), Math.sqrt(1 - halfChordLengthSquare));
-
-        return earthRadiusMiles * angularDistance;
     }
 
     private String formatCamelCase(String rawText) {
