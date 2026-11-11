@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
-
     private TrafficViewModel viewModel;
     private TextView detailTitle;
     private TextView detailComment;

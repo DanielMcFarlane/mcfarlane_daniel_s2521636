@@ -1,3 +1,11 @@
+//
+// Name                  Daniel McFarlane
+// Student ID            S2521636
+// Programme of Study    Mobile Platform Development
+//
+// Tests the LocationPoint model class to verify data deduplication and input validation.
+//
+
 package org.me.gcu.mcfarlane_daniel_s2521636;
 
 import org.junit.Test;
@@ -5,7 +13,6 @@ import static org.junit.Assert.*;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.LocationPoint;
 
 public class LocationPointTest {
-
     @Test
     public void addRoadName_preventsDuplicates() {
         // Initialise a LocationPoint instance to test data deduplication

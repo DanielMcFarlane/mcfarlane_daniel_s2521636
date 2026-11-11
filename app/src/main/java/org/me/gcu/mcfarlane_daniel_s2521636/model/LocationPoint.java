@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LocationPoint {
-
     private String pointRole;
     private double latitude;
     private double longitude;

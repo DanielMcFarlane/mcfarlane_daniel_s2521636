@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TrafficParser {
-
     private static final String TAG_SITUATION = "situation";
     private static final String TAG_SITUATION_RECORD = "situationrecord";
     private static final String TAG_GENERAL_COMMENT = "generalpubliccomment";

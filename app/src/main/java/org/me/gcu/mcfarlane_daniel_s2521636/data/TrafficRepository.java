@@ -30,7 +30,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class TrafficRepository {
-
     private final String clientId;
     private final String clientKey;
     private final File cacheDirectory;

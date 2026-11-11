@@ -1,3 +1,11 @@
+//
+// Name                  Daniel McFarlane
+// Student ID            S2521636
+// Programme of Study    Mobile Platform Development
+//
+// Tests the TrafficParser class to verify the correct extraction of Situation attributes from XML data.
+//
+
 package org.me.gcu.mcfarlane_daniel_s2521636;
 
 import org.junit.Test;
@@ -7,7 +15,6 @@ import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import java.util.List;
 
 public class TrafficParserTest {
-
     @Test
     public void parserExtractsSituationCorrectly() {
         // Define a minimal valid XML payload to simulate a DATEX II response

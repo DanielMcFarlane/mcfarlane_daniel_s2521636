@@ -45,13 +45,11 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
 
-    // Required libraries for your project components
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata:2.7.0")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
 
-    // Added rule to support ActivityScenarioRule in instrumented tests
     androidTestImplementation("androidx.test:rules:1.5.0")
 }

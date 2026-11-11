@@ -1,3 +1,11 @@
+//
+// Name                  Daniel McFarlane
+// Student ID            S2521636
+// Programme of Study    Mobile Platform Development
+//
+// Tests the Situation model class to verify duration, distance, search matching, and severity colour logic.
+//
+
 package org.me.gcu.mcfarlane_daniel_s2521636;
 
 import android.graphics.Color;
@@ -7,7 +15,6 @@ import org.me.gcu.mcfarlane_daniel_s2521636.model.Situation;
 import org.me.gcu.mcfarlane_daniel_s2521636.model.LocationPoint;
 
 public class SituationTest {
-
     @Test
     public void durationCalculation_isCorrect() {
         // Initialise a Situation with ISO 8601 timestamps spanning a 4-day period

@@ -24,7 +24,6 @@ import org.me.gcu.mcfarlane_daniel_s2521636.R;
 import org.me.gcu.mcfarlane_daniel_s2521636.viewmodel.TrafficViewModel;
 
 public class SituationListFragment extends Fragment {
-
     private TrafficViewModel viewModel;
     private SituationAdapter adapter;
     private TextView listCountHeader;

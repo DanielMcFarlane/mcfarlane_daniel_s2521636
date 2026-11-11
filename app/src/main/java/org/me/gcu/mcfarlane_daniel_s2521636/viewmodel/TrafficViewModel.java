@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TrafficViewModel extends ViewModel {
-
     public enum StreamFilter {
         ALL,
         INCIDENTS_ONLY,

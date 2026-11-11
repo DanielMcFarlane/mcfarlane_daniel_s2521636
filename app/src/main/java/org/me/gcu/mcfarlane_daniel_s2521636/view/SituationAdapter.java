@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SituationAdapter extends RecyclerView.Adapter<SituationAdapter.ViewHolder> {
-
     public interface OnSituationClickListener {
         void onSituationClicked(Situation situation);
     }

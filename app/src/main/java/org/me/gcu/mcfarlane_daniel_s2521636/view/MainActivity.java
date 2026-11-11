@@ -39,7 +39,6 @@ import org.me.gcu.mcfarlane_daniel_s2521636.R;
 import org.me.gcu.mcfarlane_daniel_s2521636.viewmodel.TrafficViewModel;
 
 public class MainActivity extends AppCompatActivity {
-
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 101;
     private static final String KEY_PORTRAIT_SHOWING_DETAILS = "portrait_showing_details";
 
