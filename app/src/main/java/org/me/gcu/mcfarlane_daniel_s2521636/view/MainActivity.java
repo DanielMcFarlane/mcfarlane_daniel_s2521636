@@ -21,7 +21,10 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.activity.EdgeToEdge;
@@ -75,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
             int px16 = getResources().getDimensionPixelSize(R.dimen.padding_large);
             int px10 = getResources().getDimensionPixelSize(R.dimen.padding_medium);
             int px4 = getResources().getDimensionPixelSize(R.dimen.padding_small);
-
             int topOffset = Math.max(0, safeInsets.top - px4);
 
             if (isLandscape) {
@@ -112,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
                     bottomNav.setPadding(bottomNav.getPaddingLeft(), bottomNav.getPaddingTop(), bottomNav.getPaddingRight(), safeInsets.bottom / 2);
                 }
             }
+
             return WindowInsetsCompat.CONSUMED;
         });
 
@@ -161,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupViews() {
         TextView statusBanner = findViewById(R.id.statusBanner);
         EditText roadSearchInput = findViewById(R.id.roadSearchInput);
-        EditText distanceInput = findViewById(R.id.distanceInput);
+        Spinner distanceSpinner = findViewById(R.id.distanceSpinner);
         View refreshButton = findViewById(R.id.refreshButton);
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
 
@@ -194,16 +197,27 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        if (distanceInput != null) {
-            distanceInput.addTextChangedListener(new SimpleTextWatcher() {
+        if (distanceSpinner != null) {
+            ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(
+                    this,
+                    R.array.distance_options,
+                    R.layout.item_spinner_selected
+            );
+            spinnerAdapter.setDropDownViewResource(R.layout.item_spinner_dropdown);
+            distanceSpinner.setAdapter(spinnerAdapter);
+
+            distanceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
-                public void onTextChanged(CharSequence inputText, int start, int before, int count) {
-                    try {
-                        double parsedDistance = inputText.toString().trim().isEmpty() ? -1.0 : Double.parseDouble(inputText.toString().trim());
-                        viewModel.setMaxDistanceMiles(parsedDistance);
-                    } catch (NumberFormatException formatException) {
-                        viewModel.setMaxDistanceMiles(-1.0);
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    double[] distances = {-1.0, 5.0, 10.0, 25.0, 50.0};
+                    if (position >= 0 && position < distances.length) {
+                        viewModel.setMaxDistanceMiles(distances[position]);
                     }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                    viewModel.setMaxDistanceMiles(-1.0);
                 }
             });
         }
@@ -237,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void updatePaneVisibility() {
         boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+
         View filterSection = findViewById(R.id.filterSection);
         Boolean isPlotAll = viewModel.getPlotAllFilteredOnMap().getValue();
         boolean showSearch = isPlotAll != null ? isPlotAll : true;
@@ -304,6 +319,7 @@ public class MainActivity extends AppCompatActivity {
     private abstract static class SimpleTextWatcher implements TextWatcher {
         @Override
         public void beforeTextChanged(CharSequence charSequence, int start, int count, int after) {}
+
         @Override
         public void afterTextChanged(Editable editable) {}
     }
