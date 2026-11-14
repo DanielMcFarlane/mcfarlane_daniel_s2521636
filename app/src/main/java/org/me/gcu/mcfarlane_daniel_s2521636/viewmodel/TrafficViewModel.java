@@ -46,16 +46,17 @@ public class TrafficViewModel extends ViewModel {
     private final MutableLiveData<Situation> selectedSituation = new MutableLiveData<>(null);
     private final MutableLiveData<Boolean> plotAllFilteredOnMap = new MutableLiveData<>(true);
     private final MutableLiveData<FeedStatus> feedStatus = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isSatelliteView = new MutableLiveData<>(false);
 
     private StreamFilter currentStreamFilter = StreamFilter.ALL;
     private String currentRoadQuery = "";
     private double maxDistanceMiles = -1.0;
+
     private double userLatitude = DEFAULT_GCU_LATITUDE;
     private double userLongitude = DEFAULT_GCU_LONGITUDE;
 
     public TrafficViewModel(File cacheDirectory) {
         feedStatus.setValue(new FeedStatus(FeedStatus.State.INITIALISING, null));
-
         repository = new TrafficRepository(cacheDirectory);
         repository.startPeriodicUpdates((situations, isOffline, timestamp) -> {
             masterSituations = situations;
@@ -79,6 +80,15 @@ public class TrafficViewModel extends ViewModel {
 
     public LiveData<FeedStatus> getFeedStatus() {
         return feedStatus;
+    }
+
+    public LiveData<Boolean> getIsSatelliteView() {
+        return isSatelliteView;
+    }
+
+    public void toggleSatelliteView() {
+        Boolean current = isSatelliteView.getValue();
+        isSatelliteView.setValue(current == null || !current);
     }
 
     public void selectSituation(Situation situation) {
@@ -135,7 +145,6 @@ public class TrafficViewModel extends ViewModel {
         for (Situation situation : masterSituations) {
             if (!matchesStreamType(situation)) continue;
             if (!situation.matchesRoadQuery(currentRoadQuery)) continue;
-
             if (maxDistanceMiles > 0) {
                 double distanceToSituation = situation.getMinimumDistanceMiles(userLatitude, userLongitude);
                 if (distanceToSituation > maxDistanceMiles) continue;

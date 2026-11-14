@@ -3,7 +3,7 @@
 // Student ID            S2521636
 // Programme of Study    Mobile Platform Development
 //
-// Fragment responsible for displaying the Google Map, plotting situations, and showing detailed information cards.
+// Fragment responsible for displaying the Google Maps view, plotting situations and showing detailed information cards.
 //
 
 package org.me.gcu.mcfarlane_daniel_s2521636.view;
@@ -22,6 +22,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -54,8 +55,10 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     private MapView mapView;
     private GoogleMap googleMap;
     private CardView textCard;
-    private CardView mapCard;
     private View searchAndListContainer;
+    private MaterialCardView mapTypeToggleCard;
+    private ImageView mapTypeIcon;
+    private TextView mapTypeText;
 
     // Metadata Container and Fields
     private View metadataContainer;
@@ -64,6 +67,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
     private final List<Polyline> activeMarkerPolylines = new ArrayList<>();
     private Marker activeMarker = null;
+
     private List<Situation> lastPlottedSituations = null;
     private boolean wasSingleSituation = false;
     private String lastOpenedSituationId = null;
@@ -100,8 +104,11 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         detailUrgent = textCard.findViewById(R.id.detailUrgent);
         detailLocations = textCard.findViewById(R.id.detailLocations);
 
-        mapCard = view.findViewById(R.id.mapCard);
         mapView = view.findViewById(R.id.mapView);
+        mapTypeToggleCard = view.findViewById(R.id.mapTypeToggleCard);
+        mapTypeIcon = view.findViewById(R.id.mapTypeIcon);
+        mapTypeText = view.findViewById(R.id.mapTypeText);
+
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
 
@@ -115,6 +122,14 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         });
 
         viewModel = new ViewModelProvider(requireActivity()).get(TrafficViewModel.class);
+
+        if (mapTypeToggleCard != null) {
+            mapTypeToggleCard.setOnClickListener(toggleView -> viewModel.toggleSatelliteView());
+        }
+
+        viewModel.getIsSatelliteView().observe(getViewLifecycleOwner(), isSatellite ->
+                applyMapTypeState(Boolean.TRUE.equals(isSatellite))
+        );
 
         viewModel.getSelectedSituation().observe(getViewLifecycleOwner(), situation -> {
             if (situation == null) return;
@@ -143,6 +158,28 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         });
     }
 
+    private void applyMapTypeState(boolean isSatellite) {
+        if (googleMap != null) {
+            googleMap.setMapType(isSatellite ? GoogleMap.MAP_TYPE_HYBRID : GoogleMap.MAP_TYPE_NORMAL);
+        }
+        if (mapTypeToggleCard != null && mapTypeIcon != null && mapTypeText != null) {
+            int trafficBlue = ContextCompat.getColor(requireContext(), R.color.traffic_blue);
+            int textPrimary = ContextCompat.getColor(requireContext(), R.color.text_primary);
+
+            if (isSatellite) {
+                mapTypeToggleCard.setCardBackgroundColor(trafficBlue);
+                mapTypeToggleCard.setStrokeColor(Color.WHITE);
+                mapTypeIcon.setColorFilter(Color.WHITE);
+                mapTypeText.setTextColor(Color.WHITE);
+            } else {
+                mapTypeToggleCard.setCardBackgroundColor(Color.parseColor("#F2FFFFFF"));
+                mapTypeToggleCard.setStrokeColor(Color.parseColor("#E0E0E0"));
+                mapTypeIcon.setColorFilter(trafficBlue);
+                mapTypeText.setTextColor(textPrimary);
+            }
+        }
+    }
+
     private void clearActivePolylines() {
         for (Polyline p : activeMarkerPolylines) {
             p.remove();
@@ -160,7 +197,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         for (int i = 1; i < coordinates.size(); i++) {
             LatLng prev = coordinates.get(i - 1);
             LatLng curr = coordinates.get(i);
-
             Location.distanceBetween(prev.latitude, prev.longitude, curr.latitude, curr.longitude, results);
 
             // Break the polyline if the jump between points exceeds 15km
@@ -205,12 +241,12 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     private void populateSingleSituationDetails(Situation situation) {
         if (textCard != null) textCard.setVisibility(View.VISIBLE);
         if (searchAndListContainer != null) searchAndListContainer.setVisibility(View.GONE);
-
         closeDetailButton.setVisibility(View.VISIBLE);
         metadataContainer.setVisibility(View.VISIBLE);
         detailComment.setVisibility(View.VISIBLE);
 
-        detailTitle.setText(situation.getPrimaryRoadName() + "   " + situation.getDisplayTypeLabel());
+        String titleText = situation.getPrimaryRoadName() + " • " + situation.getDisplayTypeLabel();
+        detailTitle.setText(titleText);
         detailComment.setText(situation.getGeneralPublicComment());
 
         if (!situation.getDelaysType().isEmpty()) {
@@ -257,7 +293,8 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
         }
 
         if (situation.isUrgentRoadworks()) {
-            detailUrgent.setText("Urgent Roadworks: Yes");
+            String urgentText = "Urgent Roadworks: Yes";
+            detailUrgent.setText(urgentText);
             detailUrgent.setVisibility(View.VISIBLE);
         } else {
             detailUrgent.setVisibility(View.GONE);
@@ -310,9 +347,15 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
     public void onMapReady(@NonNull GoogleMap map) {
         this.googleMap = map;
         googleMap.getUiSettings().setZoomControlsEnabled(true);
-        int paddingEdge = (int) (32 * getResources().getDisplayMetrics().density);
-        int paddingTop = (int) (76 * getResources().getDisplayMetrics().density);
-        googleMap.setPadding(paddingEdge, paddingTop, paddingEdge, paddingEdge);
+
+        boolean isSatellite = viewModel != null && Boolean.TRUE.equals(viewModel.getIsSatelliteView().getValue());
+        applyMapTypeState(isSatellite);
+
+        boolean isLandscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int paddingEdge = (int) ((isLandscape ? 36 : 12) * getResources().getDisplayMetrics().density);
+        int paddingTop = (int) (56 * getResources().getDisplayMetrics().density);
+        int paddingBottom = (int) ((isLandscape ? 20 : 12) * getResources().getDisplayMetrics().density);
+        googleMap.setPadding(paddingEdge, paddingTop, paddingEdge, paddingBottom);
 
         googleMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
             @Nullable
@@ -324,7 +367,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                 View view = getLayoutInflater().inflate(R.layout.item_situation, null);
                 boolean isLandscape = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
                 int infoWindowWidth;
-
                 if (isLandscape) {
                     infoWindowWidth = (int) (340 * getResources().getDisplayMetrics().density);
                 } else {
@@ -339,6 +381,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     card.setCardBackgroundColor(Color.WHITE);
                     card.setCardElevation(8f);
                     card.setUseCompatPadding(false);
+
                     View innerLayout = card.getChildAt(0);
                     if (innerLayout != null) {
                         innerLayout.setLayoutParams(new FrameLayout.LayoutParams(infoWindowWidth, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -352,8 +395,9 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
 
                 comment.setMaxLines(Integer.MAX_VALUE);
                 comment.setEllipsize(null);
-                roadAndType.setText(situation.getPrimaryRoadName() + "   " + situation.getDisplayTypeLabel());
 
+                String roadAndTypeText = situation.getPrimaryRoadName() + " • " + situation.getDisplayTypeLabel();
+                roadAndType.setText(roadAndTypeText);
                 String commentText = situation.getGeneralPublicComment();
                 if (commentText == null || commentText.trim().isEmpty()) {
                     commentText = getString(R.string.no_additional_details);
@@ -363,9 +407,8 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                 String badgeContent = situation.getShortStatus();
                 double distanceMiles = situation.getMinimumDistanceMiles(viewModel.getUserLatitude(), viewModel.getUserLongitude());
                 if (distanceMiles < 10000) {
-                    badgeContent += "   " + getString(R.string.miles_away, distanceMiles);
+                    badgeContent += " • " + getString(R.string.miles_away, distanceMiles);
                 }
-
                 delayBadge.setText(badgeContent);
                 delayBadge.getBackground().setTint(situation.getSeverityColour());
                 icon.setImageResource(situation.getIconResource());
@@ -385,7 +428,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
             if (situation != null) {
                 clearActivePolylines();
                 activeMarker = marker;
-
                 if (Boolean.TRUE.equals(viewModel.getPlotAllFilteredOnMap().getValue())) {
                     List<LatLng> polylineCoordinates = new ArrayList<>();
                     for (LocationPoint locationPoint : situation.getLocations()) {
@@ -476,6 +518,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     }
                 }
             }
+
             if (isSingleSituation) {
                 drawSafePolylines(segmentCoordinates, situation.getSeverityColour() != 0 ? situation.getSeverityColour() : Color.BLUE, false);
             }
@@ -486,7 +529,6 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
             markerToOpen.showInfoWindow();
             activeMarker = markerToOpen;
             Situation situationToReselect = (Situation) markerToOpen.getTag();
-
             if (situationToReselect != null) {
                 List<LatLng> polylineCoordinates = new ArrayList<>();
                 for (LocationPoint locationPoint : situationToReselect.getLocations()) {
@@ -506,7 +548,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                     if (plottedPointsCount > 1) {
                         googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 120));
                     } else {
-                        LatLng zoomTarget = null;
+                        LatLng zoomTarget;
                         if (lastOpenedMarkerPosition != null && lastOpenedSituationId != null
                                 && situationsToPlot.get(0).getSituationId().equals(lastOpenedSituationId)) {
                             zoomTarget = lastOpenedMarkerPosition;
@@ -519,7 +561,7 @@ public class DetailMapFragment extends Fragment implements OnMapReadyCallback {
                 } else if (!wasSingleSituation && (lastPlottedSituations == null || lastPlottedSituations.size() != situationsToPlot.size())) {
                     googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 120));
                 }
-            } catch (Exception cameraAnimationException) {
+            } catch (Exception ignored) {
             }
         }
         wasSingleSituation = isSingleSituation;
