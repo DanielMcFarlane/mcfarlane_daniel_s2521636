@@ -68,4 +68,13 @@ public class MainActivityTest {
         // Assert that the Google MapView component inside the detail fragment successfully renders to the user
         onView(withId(R.id.mapView)).check(matches(isDisplayed()));
     }
+
+    @Test
+    public void mapSatelliteToggle_executesWithoutCrashing() {
+        // Navigate to the map view
+        onView(withId(R.id.nav_map)).perform(click());
+
+        // Assert the toggle card is displayed, then perform a click to ensure it updates state without crashing
+        onView(withId(R.id.mapTypeToggleCard)).check(matches(isDisplayed())).perform(click());
+    }
 }
