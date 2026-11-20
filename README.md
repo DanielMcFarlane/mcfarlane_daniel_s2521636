@@ -29,12 +29,12 @@ Targeted for Android 8.0 (Oreo / API Level 26) and above.
     - **Data (`data`):** `TrafficRepository` and `TrafficParser`
     - **ViewModel (`viewmodel`):** `TrafficViewModel`
     - **View (`view`):** `MainActivity`, `SituationListFragment`, `DetailMapFragment` and `SituationAdapter`
-- **Networking & Parsing:** `java.net.http.HttpClient` on background threads and `XmlPullParser` for XML extraction.
+- **Networking & Parsing:** `HttpURLConnection` on background threads (`ScheduledExecutorService`) and `XmlPullParser` for XML extraction.
 - **UI Components:** Google Material Design (Cards, Chips and BottomNavigationView).
 - **Mapping:** Google Maps Android SDK (`com.google.android.gms:play-services-maps`).
 
 ## Getting Started
-Download and install the APK from the releases section of the repo.
+Download and install the APK from GCU Learn.
 
 or
 1. Clone this repository and open the project directly in Android Studio.
